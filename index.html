@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>台灣市場分析</title>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<script src="bootgrid/jquery.bootgrid.min.js"></script>
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.css">
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <ol class="breadcrumb" id="category-breadcrumb"></ol>
+                    <ul id="category-tree"></ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="panel panel-default">
+                <div class="panel-heading">縣市</div>
+                <div class="panel-body">
+                    <table class="table tablesorter" id="table">
+                        <thead>
+                            <!--<tr>
+                                <th rowspan="2">縣市</th>
+                                <th colspan="3">全部</th>
+                                <th colspan="3">近90天</th>
+                                <th colspan="3">近365天</th>
+                            </tr> -->
+                            <tr>
+                                <th data-column-id="county">縣市</th>
+                                <th data-column-id="no" data-type="numeric">家數</th>
+                                <th data-column-id="total" data-type="numeric">資本總額</th>
+                                <th data-column-id="com">代表公司</th>
+                                <th data-column-id="365:no" data-type="numeric">365:家數</th>
+                                <th data-column-id="365:total" data-type="numeric">365:資本總額</th>
+                                <th data-column-id="365:com">365:代表公司</th>
+                                <!--<th>家數</th>
+                                <th>資本總額</th>
+                                <th>代表公司</th>-->
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-county">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+var categories = {};
+var category_children = {
+    '大': [],
+};
+var category_parent = {};
+var result;
+$.get('result.json', function(res){
+        result = res;
+        console.log(result['level-no-top-A']);
+$.get('tsic.utf-8.csv', function(content){
+        var lines = content.split("\n");
+        var columns = lines[0].split(',');
+        for (var i = 1; i < lines.length; i ++) {
+            line = lines[i];
+            rows = line.split(',');
+            var values = {};
+            for (var j = 0; j < columns.length; j ++) {
+                values[columns[j]] = rows[j];
+            }
+            if (values['版本別'] != 8) {
+                continue;
+            }
+            categories[values['行業代號'].replace('-', '')] = values;
+            if (values['層級'] == '大') {
+                category_children['大'].push(values['行業代號']);
+                continue;
+            } else if (values['層級'] == '中') {
+                if ('undefined' == typeof(category_children[values['大業別']])) {
+                    category_children[values['大業別']] = [];
+                }
+                category_children[values['大業別']].push(values['行業代號']);
+                continue;
+            } else if (values['層級'] == '小') {
+                var parent_id = values['行業代號'].substr(0, 2);
+                if ('undefined' == typeof(category_children[parent_id])) {
+                    category_children[parent_id] = [];
+                }
+                category_children[parent_id].push(values['行業代號']);
+                continue;
+            } else if (values['層級'] == '細') {
+                var parent_id = values['行業代號'].substr(0, 3);
+                if ('undefined' == typeof(category_children[parent_id])) {
+                    category_children[parent_id] = [];
+                }
+                category_children[parent_id].push(values['行業代號']);
+                continue;
+            } else if (values['層級'] == '子') {
+                var parent_id = values['行業代號'].split('-')[0];
+                if ('undefined' == typeof(category_children[parent_id])) {
+                    category_children[parent_id] = [];
+                }
+                category_children[parent_id].push(values['行業代號'].replace('-', ''));
+                continue;
+            } else {
+                console.log(values);
+                throw 'test';
+            }
+        }
+        $('#category-breadcrumb').append($('<li></li>').append($('<a></a>').attr('href', '#').text('大分類').data('id', '大')));
+        $('#category-breadcrumb a').click();
+}, 'text');
+
+var counties = "南投縣,嘉義市,嘉義縣,基隆市,宜蘭縣,屏東縣,彰化縣,新北市,新竹市,新竹縣,桃園市,澎湖縣,臺中市,臺北市,臺南市,臺東縣,花蓮縣,苗栗縣,連江縣,金門縣,雲林縣,高雄市".split(',');
+
+$('#category-breadcrumb').on('click', 'a', function(e){
+        e.preventDefault();
+        var choose_id = $(this).data('id');
+        $('#category-tree').html('');
+        $(this).parent('li').nextAll().remove();
+        if (category_children[choose_id]) {
+            for (i = 0; i < category_children[choose_id].length; i ++) {
+            var li_dom = $('<li></li>');
+            var a_dom = $('<a></a>');
+            var id = category_children[choose_id][i];
+            a_dom.addClass('category-link').attr('href', '#').text(id + ' ' + categories[id]['行業名稱']).data('id', id);
+            li_dom.append(a_dom);
+            $('#category-tree').append(li_dom);
+            }
+        }
+
+        $('#table tbody').html('');
+        if (choose_id == '大') { // root
+            key = 'county-$county';
+        } else if (choose_id.length == 1) {
+            key = 'county-level-no-$county-top-' + choose_id;
+        } else {
+            var level = {2:2, 4:3, 6:6}[choose_id.length];
+            key = 'county-level-no-$county-' + level + '-' + choose_id;
+        }
+
+        $('#table').bootgrid('clear');
+        for (var i = 0; i < counties.length; i ++) {
+            k = key.replace('$county', counties[i]);
+            if (!result[k]) {
+                continue;
+            }
+            var tr_dom = $('<tr></tr>');
+            obj = {};
+            obj['county'] = counties[i];
+            ['', '365:'].map(function(prefix){
+                obj[prefix + 'no'] = (result[k][prefix + '家數']);
+                obj[prefix + 'total'] = (result[k][prefix + '資本額數']);
+                var set = [];
+                for (no in result[k][prefix + 'top']) {
+                    set.push([no, parseInt(result[k][prefix + 'top'][no])]);
+                }
+                set.sort(function(a, b) { return b[1] - a[1]; });
+                var td_dom = $('<td></td>');
+                for (var j = 0; j < 3; j ++) {
+                    if (!set[j]) {
+                        continue;
+                    }
+                    td_dom.append($('<p></p>').text(set[j][0]));
+                }
+                obj[prefix + 'com'] = (td_dom.text());
+            });
+            $('#table').bootgrid('append', [obj]);
+        }
+
+});
+
+$('#category-tree').on('click', '.category-link', function(e){
+        e.preventDefault();
+        var id = $(this).data('id');
+
+        // 新增 breadcrumb
+        $('#category-tree').html('');
+        $('#category-breadcrumb').append($('<li></li>').append($('<a></a>').attr('href', '#' + id).text(categories[id]['行業名稱']).data('id', id)));
+        $('#category-breadcrumb a:last').click();
+});
+});
+$('#table').bootgrid();
+
+</script>
+</body>
+</html>
