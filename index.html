@@ -139,7 +139,7 @@ $('#category-breadcrumb').on('click', 'a', function(e){
         } else if (choose_id.length == 1) {
             key = 'county-level-no-top-' + choose_id;
         } else {
-            var level = {2:2, 4:3, 6:6}[choose_id.length];
+            var level = choose_id.length;
             key = 'county-level-no-' + level + '-' + choose_id;
         }
 
