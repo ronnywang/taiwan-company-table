@@ -32,12 +32,12 @@
                             </tr> -->
                             <tr>
                                 <th data-column-id="county">縣市</th>
-                                <th data-column-id="no" data-type="numeric">家數</th>
+                                <th data-order="desc" data-column-id="no" data-type="numeric">家數</th>
                                 <th data-column-id="total" data-type="numeric">資本總額</th>
-                                <th data-column-id="com">代表公司</th>
-                                <th data-column-id="365:no" data-type="numeric">365:家數</th>
-                                <th data-column-id="365:total" data-type="numeric">365:資本總額</th>
-                                <th data-column-id="365:com">365:代表公司</th>
+                                <th data-column-id="com">資本額前三公司</th>
+                                <th data-column-id="365:no" data-type="numeric">近一年家數</th>
+                                <th data-column-id="365:total" data-type="numeric">近一年資本總額</th>
+                                <th data-column-id="365:com">近一年資本額前三公司</th>
                                 <!--<th>家數</th>
                                 <th>資本總額</th>
                                 <th>代表公司</th>-->
@@ -140,13 +140,14 @@ $('#category-breadcrumb').on('click', 'a', function(e){
 
         $.get('data/' + key + '.json', function(result){
             $('#table').bootgrid('clear');
+            var records = [];
             for (var i = 0; i < counties.length; i ++) {
                 k = counties[i];
                 if (!result[k]) {
                     continue;
                 }
                 var tr_dom = $('<tr></tr>');
-                obj = {};
+                var obj = {};
                 obj['county'] = counties[i];
                 ['', '365:'].map(function(prefix){
                     obj[prefix + 'no'] = (result[k][prefix + '家數']);
@@ -166,8 +167,9 @@ $('#category-breadcrumb').on('click', 'a', function(e){
                     }
                     obj[prefix + 'com'] = (td_dom.html());
                 });
-                $('#table').bootgrid('append', [obj]);
+                records.push(obj);
             }
+            $('#table').bootgrid('append', records);
         }, 'json');
 
 });
@@ -181,7 +183,7 @@ $('#category-tree').on('click', '.category-link', function(e){
         $('#category-breadcrumb').append($('<li></li>').append($('<a></a>').attr('href', '#' + id).text(categories[id]['行業名稱']).data('id', id)));
         $('#category-breadcrumb a:last').click();
 });
-$('#table').bootgrid();
+$('#table').bootgrid({rowCount: 100});
 
 </script>
 </body>
