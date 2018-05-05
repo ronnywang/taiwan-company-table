@@ -57,10 +57,6 @@ var category_children = {
     '大': [],
 };
 var category_parent = {};
-var result;
-$.get('result.json', function(res){
-        result = res;
-        console.log(result['level-no-top-A']);
 $.get('tsic.utf-8.csv', function(content){
         var lines = content.split("\n");
         var columns = lines[0].split(',');
@@ -134,42 +130,45 @@ $('#category-breadcrumb').on('click', 'a', function(e){
 
         $('#table tbody').html('');
         if (choose_id == '大') { // root
-            key = 'county-$county';
+            key = 'county';
         } else if (choose_id.length == 1) {
-            key = 'county-level-no-$county-top-' + choose_id;
+            key = 'county-level-no-top-' + choose_id;
         } else {
             var level = {2:2, 4:3, 6:6}[choose_id.length];
-            key = 'county-level-no-$county-' + level + '-' + choose_id;
+            key = 'county-level-no-' + level + '-' + choose_id;
         }
 
-        $('#table').bootgrid('clear');
-        for (var i = 0; i < counties.length; i ++) {
-            k = key.replace('$county', counties[i]);
-            if (!result[k]) {
-                continue;
-            }
-            var tr_dom = $('<tr></tr>');
-            obj = {};
-            obj['county'] = counties[i];
-            ['', '365:'].map(function(prefix){
-                obj[prefix + 'no'] = (result[k][prefix + '家數']);
-                obj[prefix + 'total'] = (result[k][prefix + '資本額數']);
-                var set = [];
-                for (no in result[k][prefix + 'top']) {
-                    set.push([no, parseInt(result[k][prefix + 'top'][no])]);
+        $.get('data/' + key + '.json', function(result){
+            $('#table').bootgrid('clear');
+            for (var i = 0; i < counties.length; i ++) {
+                k = counties[i];
+                if (!result[k]) {
+                    continue;
                 }
-                set.sort(function(a, b) { return b[1] - a[1]; });
-                var td_dom = $('<td></td>');
-                for (var j = 0; j < 3; j ++) {
-                    if (!set[j]) {
-                        continue;
+                var tr_dom = $('<tr></tr>');
+                obj = {};
+                obj['county'] = counties[i];
+                ['', '365:'].map(function(prefix){
+                    obj[prefix + 'no'] = (result[k][prefix + '家數']);
+                    obj[prefix + 'total'] = (result[k][prefix + '資本額數']);
+                    var set = [];
+                    for (no in result[k][prefix + 'top']) {
+                        set.push([no, parseInt(result[k][prefix + 'top'][no])]);
                     }
-                    td_dom.append($('<p></p>').text(set[j][0]));
-                }
-                obj[prefix + 'com'] = (td_dom.text());
-            });
-            $('#table').bootgrid('append', [obj]);
-        }
+                    set.sort(function(a, b) { return b[1] - a[1]; });
+                    var td_dom = $('<td></td>');
+                    for (var j = 0; j < 3; j ++) {
+                        if (!set[j]) {
+                            continue;
+                        }
+                        var terms = set[j][0].split(':');
+                        td_dom.append($('<p></p>').append($('<a></a>').attr('href', 'https://company.g0v.ronny.tw/id/' + terms[0]).text(terms[1]).attr('title', '資本總額:' + set[j][1])));
+                    }
+                    obj[prefix + 'com'] = (td_dom.html());
+                });
+                $('#table').bootgrid('append', [obj]);
+            }
+        }, 'json');
 
 });
 
@@ -181,7 +180,6 @@ $('#category-tree').on('click', '.category-link', function(e){
         $('#category-tree').html('');
         $('#category-breadcrumb').append($('<li></li>').append($('<a></a>').attr('href', '#' + id).text(categories[id]['行業名稱']).data('id', id)));
         $('#category-breadcrumb a:last').click();
-});
 });
 $('#table').bootgrid();
 
